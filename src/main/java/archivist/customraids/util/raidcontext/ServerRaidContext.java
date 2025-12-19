@@ -40,4 +40,16 @@ public class ServerRaidContext implements RaidContext {
     public String getDebugName() {
         return "ServerRaid";
     }
+
+    private long raidDay = -1;
+
+    @Override
+    public void markAttempted(long day) {
+        this.raidDay = day;
+    }
+
+    @Override
+    public boolean wasAttemptedToday(long day) {
+        return this.raidDay == day;
+    }
 }

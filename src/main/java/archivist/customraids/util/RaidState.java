@@ -16,10 +16,16 @@ import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.MobSpawnEvent;
+import net.minecraftforge.eventbus.api.Event;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
+import java.util.UUID;
 
 public class RaidState {
 
@@ -29,6 +35,10 @@ public class RaidState {
     public final Set<Mob> activeMobs = new HashSet<>();
     public final ServerBossEvent bossBar;
     private static final Random RANDOM = new Random();
+    private RaidResult result = RaidResult.ONGOING;
+    private boolean finished = false;
+    private final UUID id = UUID.randomUUID();
+    public static final String RAID_ID_TAG = "customraids:raid_id";
 
     public RaidState(RaidContext context) {
         this.context = context;
@@ -42,29 +52,49 @@ public class RaidState {
     }
 
     public void start(RaidDefinition def) {
+        long day = context.level().getDayTime() / 24000L;
 
+        if (finished) return;
+        if (context.wasAttemptedToday(day)) return;
+
+        this.result = RaidResult.ONGOING;
         this.definition = def;
         this.currentWave = 0;
+        this.updateBossBarText();
         bossBar.setProgress(1.0F);
         bossBar.setVisible(true);
+        context.markAttempted(day);
 
         Customraids.getLOGGER().debug(
                 "Spawning first wave!"
         );
-        spawnWave();
+        spawnNextWave();
     }
 
-    private void spawnWave() {
+    private void updateBossBarText() {
+        if (currentWave < this.definition.waves.size()) {
+            long aliveMobs = activeMobs.stream().filter((mob) -> mob != null && mob.isAlive()).count();
+            int waveTotalMobs = definition.waves.get(currentWave).count;
+            if (aliveMobs != (long)waveTotalMobs) {
+                bossBar.setName(Component.literal(definition.name + ": " + aliveMobs + " Remain"));
+            } else {
+                bossBar.setName(Component.literal(definition.name));
+            }
+
+        }
+    }
+
+    private void spawnNextWave() {
+        Customraids.getLOGGER().debug(
+                "Spawning next wave!"
+        );
         if (currentWave >= definition.waves.size()) {
             end(true);
             return;
         }
 
-        BlockPos base = context.getBasePos();
-        ServerLevel level = context.level();
-
         for (ServerPlayer player : context.getParticipants()) {
-            player.level().playSound((Player)null, player.blockPosition(), SoundEvents.RAID_HORN.get(), SoundSource.PLAYERS, 1.0F, 0.5F);
+            player.level().playSound(player, player.blockPosition(), SoundEvents.RAID_HORN.get(), SoundSource.PLAYERS, 1.0F, 0.5F);
         }
 
         // Spawn mobs relative to base
@@ -73,7 +103,12 @@ public class RaidState {
         bossBar.setProgress(1.0F);
 
         WaveDefinition wave = definition.waves.get(currentWave);
-        int mobCount = wave.count;
+        spawnWave(wave.count);
+    }
+
+    private void spawnWave(int mobCount){
+        BlockPos base = context.getBasePos();
+        ServerLevel level = context.level();
 
         for (int i = 0; i < mobCount; i++) {
             int distance = RANDOM.nextInt(Config.maxSpawnDistance - Config.minSpawnDistance + 1) + Config.minSpawnDistance;
@@ -103,25 +138,86 @@ public class RaidState {
                     null
             );
 
-            mob.addTag("customraids");
-//            mob.addTag("raid_id:" + id);
+            mob.addTag("customraids:raider");
+            mob.addTag(RAID_ID_TAG + "=" + id.toString());
 
             mob.goalSelector.addGoal(
                     2,
-                    new MoveToBaseGoal(mob, 1.1, base)
+                    new MoveToBaseGoal(mob, 1.5, base)
             );
 
             activeMobs.add(mob);
+            this.updateBossBarText();
             level.addFreshEntity(mob);
         }
     }
 
     public void end(boolean success) {
+        if (finished) return;
+
         for (ServerPlayer player : context.getParticipants()) {
             if (success) {
+                this.result = RaidResult.SUCCESS;
                 player.giveExperiencePoints(definition.reward_xp);
+            } else {
+                this.result = RaidResult.FAILURE;
             }
             bossBar.removePlayer(player);
         }
+        this.finished = true;
+        cleanupRaiders();
+        bossBar.setVisible(false);
+        bossBar.removeAllPlayers();
+        RaidManager.onRaidFinished(this);
+    }
+
+    public void cleanupRaiders() {
+        for (Mob mob : activeMobs) {
+            if (mob != null && mob.isAlive()) {
+                mob.discard();
+            }
+        }
+        activeMobs.clear();
+    }
+
+    private void updateBossBar() {
+        int total = definition.waves.get(currentWave).count;
+        float progress = (float) activeMobs.size() / total;
+        bossBar.setProgress(progress);
+    }
+
+    public void onTaggedMobDeath(Mob mob) {
+        activeMobs.remove(mob);
+        activeMobs.removeIf(m -> m == null || !m.isAlive());
+        Customraids.getLOGGER().debug(
+                "Tagged mob has been slain:"
+        );
+
+        this.updateBossBarText();
+
+        if (activeMobs.isEmpty()) {
+            Customraids.getLOGGER().debug(
+                    "No more raiders left in this wave!"
+            );
+            currentWave++;
+            spawnNextWave();
+        } else {
+            Customraids.getLOGGER().debug(
+                    "More raiders remain!"
+            );
+            updateBossBar();
+        }
+    }
+
+    public boolean isFinished() {
+        return finished;
+    }
+
+    public boolean isActive() {
+        return result == RaidResult.ONGOING;
+    }
+
+    public UUID getId() {
+        return id;
     }
 }

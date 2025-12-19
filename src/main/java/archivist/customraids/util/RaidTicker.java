@@ -2,18 +2,23 @@ package archivist.customraids.util;
 
 import archivist.customraids.Config;
 import archivist.customraids.Customraids;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+
 @Mod.EventBusSubscriber(
         modid = Customraids.MODID,
         bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class RaidTicker {
-
-    private static boolean raidStartedTonight = false;
+    private static final Map<ResourceKey<Level>, Boolean> WAS_NIGHT =
+            new HashMap<>();
 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
@@ -26,17 +31,22 @@ public class RaidTicker {
             int day = (int) (level.getDayTime() / 24000L);
 
             boolean night = time >= 13000 && time <= 23000;
+            boolean wasNight = WAS_NIGHT.getOrDefault(level.dimension(), false);
 
-//            if (night && day % Config.raidInterval == 0 && !raidStartedTonight) {
-            if (night && !raidStartedTonight) { // made to occur every night for testing
+            Customraids.getLOGGER().debug("Raid attempt day={} nightStart={}", day, !wasNight && night);
+
+            if (night && !wasNight && !RaidManager.wasRaidAttemptedToday(level, day) && day % Config.raidInterval == 0) {
                 Customraids.getLOGGER().info("Night detected, starting raids");
-                raidStartedTonight = true;
                 RaidManager.startRaids(level);
             }
 
-            if (!night) {
-                raidStartedTonight = false;
+            if (!night && wasNight){
+                for (RaidState raid : new ArrayList<>(RaidManager.getActiveRaids())){
+                    raid.end(false);
+                }
             }
+
+            WAS_NIGHT.put(level.dimension(), night);
         }
     }
 }

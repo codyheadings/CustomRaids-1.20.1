@@ -1,0 +1,15 @@
+{
+  "name": "Chicken Run",
+
+  "mobs": [
+    {
+      "id": "minecraft:chicken"
+    }
+  ],
+
+  "waves": [
+    { "count": 20 }
+  ],
+
+  "reward_xp": 150
+}

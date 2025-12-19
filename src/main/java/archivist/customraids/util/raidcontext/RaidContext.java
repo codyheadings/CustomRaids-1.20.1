@@ -16,4 +16,8 @@ public interface RaidContext {
     boolean isValid();
 
     String getDebugName();
+
+    void markAttempted(long day);
+
+    boolean wasAttemptedToday(long day);
 }

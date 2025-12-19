@@ -2,10 +2,12 @@ package archivist.customraids;
 
 import archivist.customraids.events.RaidReloadListener;
 import archivist.customraids.util.RaidManager;
+import archivist.customraids.util.RaidState;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Mob;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
@@ -18,8 +20,12 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.MobSpawnEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
+import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -114,6 +120,40 @@ public class Customraids {
             if (!(event.getEntity() instanceof ServerPlayer player)) return;
 
             RaidManager.removeRaidsForPlayer(player);
+        }
+
+        @SubscribeEvent
+        public static void onMobDeath(LivingDeathEvent event) {
+            if (!(event.getEntity() instanceof Mob mob)) return;
+
+            if (!mob.getTags().contains("customraids:raider")) return;
+
+            RaidState raid = RaidManager.getRaidForMob(mob);
+            if (raid == null) return;
+
+            raid.onTaggedMobDeath(mob);
+        }
+
+        @SubscribeEvent
+        public static void onMobSpawn(EntityJoinLevelEvent event) {
+            if (event.getEntity() instanceof Mob mob) {
+                if (mob.getTags().contains("customraids:raider")) {
+                    mob.setPersistenceRequired();
+                }
+            }
+        }
+
+
+        @SubscribeEvent
+        public static void onMobDespawnCheck(MobSpawnEvent.AllowDespawn event) {
+            Mob mob = event.getEntity();
+
+            if (!mob.getTags().contains("customraids:raider")) return;
+
+            RaidState raid = RaidManager.getRaidForMob(mob);
+            if (raid != null && raid.isActive()) {
+                event.setResult(Event.Result.DENY);
+            }
         }
     }
 

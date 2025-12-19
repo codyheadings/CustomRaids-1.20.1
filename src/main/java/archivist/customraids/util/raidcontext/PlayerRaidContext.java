@@ -44,5 +44,17 @@ public class PlayerRaidContext implements RaidContext {
     public String getDebugName() {
         return "PlayerRaid:" + player.getGameProfile().getName();
     }
+
+    private long raidDay = -1;
+
+    @Override
+    public void markAttempted(long day) {
+        this.raidDay = day;
+    }
+
+    @Override
+    public boolean wasAttemptedToday(long day) {
+        return this.raidDay == day;
+    }
 }
 
