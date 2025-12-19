@@ -1,0 +1,23 @@
+{
+  "name": "Undead Invasion",
+
+  "mobs": [
+    {
+      "id": "minecraft:zombie"
+    },
+    {
+      "id": "minecraft:skeleton"
+    },
+    {
+      "id": "minecraft:zombie_villager"
+    }
+  ],
+
+  "waves": [
+    { "count": 5 },
+    { "count": 7 },
+    { "count": 8 }
+  ],
+
+  "reward_xp": 250
+}
