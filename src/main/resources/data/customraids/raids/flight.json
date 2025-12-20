@@ -1,0 +1,19 @@
+{
+  "name": "From the Skies",
+
+  "mobs": [
+    {
+      "id": "minecraft:phantom"
+    }
+  ],
+
+  "waves": [
+    { "count": 2 },
+    { "count": 3 },
+    { "count": 4 }
+  ],
+
+  "weight": 3,
+
+  "reward_xp": 200
+}

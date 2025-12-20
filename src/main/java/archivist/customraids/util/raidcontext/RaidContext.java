@@ -20,4 +20,21 @@ public interface RaidContext {
     void markAttempted(long day);
 
     boolean wasAttemptedToday(long day);
+
+    default boolean hasParticipant(ServerPlayer player) {
+        return getParticipants().contains(player);
+    }
+
+    default void addParticipant(ServerPlayer player) {
+        getParticipants().add(player);
+    }
+
+    default void removeParticipant(ServerPlayer player) {
+        getParticipants().remove(player);
+    }
+
+    default boolean hasLivingParticipants() {
+        return getParticipants().stream()
+                .anyMatch(p -> !p.isDeadOrDying());
+    }
 }

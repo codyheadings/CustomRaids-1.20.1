@@ -99,6 +99,12 @@ public class RaidManager {
         return ACTIVE_RAIDS;
     }
 
+    public static List<RaidState> getRaidsForPlayer(ServerPlayer player) {
+        return ACTIVE_RAIDS.stream()
+                .filter(r -> r.context.getParticipants().contains(player))
+                .toList();
+    }
+
     public static boolean wasRaidAttemptedToday(ServerLevel level, long day) {
         for (RaidState raid : ACTIVE_RAIDS) {
             if (raid.context.wasAttemptedToday(day)) {
@@ -113,7 +119,7 @@ public class RaidManager {
     }
 
     public static void removeRaidsForPlayer(ServerPlayer player) {
-        for (RaidState raid : ACTIVE_RAIDS){
+        for (RaidState raid : new ArrayList<>(ACTIVE_RAIDS)){
             if (raid.context.getParticipants().contains(player)){
                 raid.end(false);
             }

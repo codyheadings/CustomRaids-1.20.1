@@ -1,0 +1,34 @@
+{
+  "name": "Killer Cubes",
+
+  "mobs": [
+    {
+      "id": "minecraft:slime",
+      "effects": [
+        {
+          "effect": "minecraft:jump_boost",
+          "duration": 12000,
+          "amplifier": 1
+        }
+      ]
+    },
+    {
+      "id": "minecraft:magma_cube",
+      "effects": [
+        {
+          "effect": "minecraft:jump_boost",
+          "duration": 12000,
+          "amplifier": 1
+        }
+      ]
+    }
+  ],
+
+  "waves": [
+    { "count": 6 }
+  ],
+
+  "weight": 2,
+
+  "reward_xp": 180
+}

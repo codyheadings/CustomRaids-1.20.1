@@ -1,0 +1,17 @@
+{
+  "name": "Screaming Menace",
+
+  "mobs": [
+    {
+      "id": "minecraft:ghast"
+    }
+  ],
+
+  "waves": [
+    { "count": 1 }
+  ],
+
+  "weight": 2,
+
+  "reward_xp": 120
+}

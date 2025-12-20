@@ -17,15 +17,11 @@ import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.FlyingMob;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.monster.Slime;
 import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraftforge.event.entity.EntityJoinLevelEvent;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.event.entity.living.MobSpawnEvent;
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.*;
@@ -42,6 +38,7 @@ public class RaidState {
     private boolean finished = false;
     private final UUID id = UUID.randomUUID();
     public static final String RAID_ID_TAG = "customraids:raid_id";
+    private boolean glowApplied = false;
 
     public RaidState(RaidContext context) {
         this.context = context;
@@ -98,6 +95,9 @@ public class RaidState {
 
         for (ServerPlayer player : context.getParticipants()) {
             player.level().playSound(player, player.blockPosition(), SoundEvents.RAID_HORN.get(), SoundSource.PLAYERS, 1.0F, 0.5F);
+            player.sendSystemMessage(
+                    Component.literal("A wave of raiders is approaching!")
+            );
         }
 
         // Spawn mobs relative to base
@@ -120,6 +120,7 @@ public class RaidState {
             int zOffset = (int)(Math.sin(angle) * (double)distance);
             BlockPos spawnPos = base.offset(xOffset, 0, zOffset);
             spawnPos = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawnPos);
+            spawnPos = spawnPos.offset(0,2,0);
 
             MobEntry mobEntry = definition.getRandomMob(context);
             EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(ResourceLocation.parse(mobEntry.id));
@@ -162,17 +163,21 @@ public class RaidState {
             }
 
             mob.addTag("customraids:raider");
-            mob.addTag(RAID_ID_TAG + "=" + id.toString());
+            mob.addTag(RAID_ID_TAG + "=" + id);
 
-            mob.goalSelector.addGoal(
-                    2,
-                    new MoveToBaseGoal(mob, 1.5, base)
-            );
+            if (mob instanceof FlyingMob || mob instanceof Slime) {
+                mob.setTarget(context.getParticipants().stream().findFirst().orElse(null));
+            } else {
+                mob.goalSelector.addGoal(
+                        2,
+                        new MoveToBaseGoal(mob, 1.5, base)
+                );
+            }
 
             activeMobs.add(mob);
-            this.updateBossBarText();
             level.addFreshEntity(mob);
         }
+        this.updateBossBarText();
     }
 
     public void end(boolean success) {
@@ -180,9 +185,15 @@ public class RaidState {
 
         for (ServerPlayer player : context.getParticipants()) {
             if (success) {
+                player.sendSystemMessage(
+                        Component.literal("The raiders have been vanquished!")
+                );
                 this.result = RaidResult.SUCCESS;
                 player.giveExperiencePoints(definition.reward_xp);
             } else {
+                player.sendSystemMessage(
+                        Component.literal("The raiders could not be stopped...")
+                );
                 this.result = RaidResult.FAILURE;
             }
             bossBar.removePlayer(player);
@@ -202,6 +213,32 @@ public class RaidState {
         }
         activeMobs.clear();
     }
+
+    public void applyDayGlow() {
+        if (glowApplied) return;
+        if (!Config.dayGlow) return;
+
+        for (Mob mob : activeMobs) {
+            if (mob != null && mob.isAlive()) {
+                mob.addEffect(new MobEffectInstance(
+                        MobEffects.GLOWING,
+                        2000,
+                        0,
+                        false,
+                        false
+                ));
+            }
+        }
+
+        for (ServerPlayer player : this.context.getParticipants()) {
+            player.sendSystemMessage(
+                    Component.literal("Raiders are revealed as dawn approaches!")
+            );
+        }
+
+        glowApplied = true;
+    }
+
 
     private void updateBossBar() {
         int total = definition.waves.get(currentWave).count;
@@ -230,6 +267,19 @@ public class RaidState {
             );
             updateBossBar();
         }
+    }
+
+    public void addParticipant(ServerPlayer player) {
+        if (isFinished()) return;
+
+        if (context.hasParticipant(player)) return;
+
+        context.addParticipant(player);
+        bossBar.addPlayer(player);
+
+        player.sendSystemMessage(
+                Component.literal("You joined a raid!")
+        );
     }
 
     public boolean isFinished() {

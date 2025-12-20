@@ -1,0 +1,27 @@
+{
+  "name": "Invasion of Arthropods",
+
+  "mobs": [
+    {
+      "id": "minecraft:silverfish",
+      "weight": 2
+    },
+    {
+      "id": "minecraft:spider",
+      "weight": 2
+    },
+    {
+      "id": "minecraft:cave_spider",
+      "weight": 1
+    }
+  ],
+
+  "waves": [
+    { "count": 9 },
+    { "count": 13 }
+  ],
+
+  "weight": 4,
+
+  "reward_xp": 200
+}

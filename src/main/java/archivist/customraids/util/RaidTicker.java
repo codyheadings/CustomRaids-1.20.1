@@ -2,6 +2,7 @@ package archivist.customraids.util;
 
 import archivist.customraids.Config;
 import archivist.customraids.Customraids;
+import archivist.customraids.util.raidcontext.RaidContext;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
@@ -11,6 +12,7 @@ import net.minecraftforge.fml.common.Mod;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Mod.EventBusSubscriber(
@@ -32,8 +34,23 @@ public class RaidTicker {
 
             boolean night = time >= 13000 && time <= 23000;
             boolean wasNight = WAS_NIGHT.getOrDefault(level.dimension(), false);
+            boolean approachingDay = time >= 22000 && time < 23000;
 
-            Customraids.getLOGGER().debug("Raid attempt day={} nightStart={}", day, !wasNight && night);
+            List<RaidState> activeRaids = RaidManager.getActiveRaids();
+            for (RaidState raid : new ArrayList<>(activeRaids)){
+                RaidContext context = raid.context;
+                if (!context.hasLivingParticipants()) {
+                    raid.end(false);
+                }
+            }
+
+            if (approachingDay && Config.dayGlow) {
+                for (RaidState raid : activeRaids) {
+                    if (raid.isActive()) {
+                        raid.applyDayGlow();
+                    }
+                }
+            }
 
             if (night && !wasNight && !RaidManager.wasRaidAttemptedToday(level, day) && day % Config.raidInterval == 0) {
                 Customraids.getLOGGER().info("Night detected, starting raids");
@@ -41,7 +58,7 @@ public class RaidTicker {
             }
 
             if (!night && wasNight){
-                for (RaidState raid : new ArrayList<>(RaidManager.getActiveRaids())){
+                for (RaidState raid : new ArrayList<>(activeRaids)){
                     raid.end(false);
                 }
             }
