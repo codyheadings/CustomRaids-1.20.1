@@ -28,7 +28,7 @@ public class RaidTicker {
             if (!level.dimension().equals(Level.OVERWORLD)) continue;
 
             long time = level.getDayTime() % 24000L;
-            int day = (int) (level.getDayTime() / 24000L);
+            int day = (int) (level.getGameTime() / 24000L);
 
             boolean night = time >= 13000 && time <= 23000;
             boolean wasNight = WAS_NIGHT.getOrDefault(level.dimension(), false);

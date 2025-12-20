@@ -6,10 +6,13 @@
       "id": "minecraft:zombie"
     },
     {
-      "id": "minecraft:skeleton"
+      "id": "minecraft:husk"
     },
     {
       "id": "minecraft:zombie_villager"
+    },
+    {
+      "id": "minecraft:drowned"
     }
   ],
 
@@ -18,6 +21,8 @@
     { "count": 7 },
     { "count": 8 }
   ],
+
+  "weight": 5,
 
   "reward_xp": 250
 }

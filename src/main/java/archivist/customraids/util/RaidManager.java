@@ -92,7 +92,7 @@ public class RaidManager {
 
     private static RaidDefinition getRandomRaid(List<RaidDefinition> availableRaids, RandomSource random) {
 //        TODO: add difficulty/conditional selection logic for random raids
-        return availableRaids.get(random.nextInt(availableRaids.size()));
+        return Selector.weightedRandom(availableRaids, RaidDefinition::getWeight, random);
     }
 
     public static List<RaidState> getActiveRaids() {

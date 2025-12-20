@@ -5,12 +5,17 @@ import archivist.customraids.Customraids;
 import archivist.customraids.util.raidcontext.RaidContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerBossEvent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.BossEvent;
+import net.minecraft.world.DifficultyInstance;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
@@ -21,11 +26,9 @@ import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.MobSpawnEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.registries.ForgeRegistries;
 
-import java.util.HashSet;
-import java.util.Random;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 
 public class RaidState {
 
@@ -118,9 +121,13 @@ public class RaidState {
             BlockPos spawnPos = base.offset(xOffset, 0, zOffset);
             spawnPos = level.getHeightmapPos(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawnPos);
 
-            EntityType<?> type = definition.getRandomMob(context);
+            MobEntry mobEntry = definition.getRandomMob(context);
+            EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(ResourceLocation.parse(mobEntry.id));
+            List<MobEffectEntry> effectEntries = mobEntry.effects;
             Mob mob = (Mob) type.create(level);
             if (mob == null) continue;
+
+            DifficultyInstance difficulty = level.getCurrentDifficultyAt(spawnPos); // will come in handy later
 
             mob.moveTo(
                     spawnPos.getX() + 0.5,
@@ -132,11 +139,27 @@ public class RaidState {
 
             mob.finalizeSpawn(
                     level,
-                    level.getCurrentDifficultyAt(spawnPos),
+                    difficulty,
                     MobSpawnType.EVENT,
                     null,
                     null
             );
+
+            for (MobEffectEntry effectEntry : effectEntries) {
+                MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(
+                        new ResourceLocation(effectEntry.effect)
+                );
+
+                if (effect == null) continue;
+
+                mob.addEffect(new MobEffectInstance(
+                        effect,
+                        effectEntry.duration,
+                        effectEntry.amplifier,
+                        effectEntry.ambient,
+                        effectEntry.showParticles
+                ));
+            }
 
             mob.addTag("customraids:raider");
             mob.addTag(RAID_ID_TAG + "=" + id.toString());

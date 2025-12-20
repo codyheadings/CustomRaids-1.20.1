@@ -3,13 +3,22 @@
 
   "mobs": [
     {
-      "id": "minecraft:chicken"
+      "id": "minecraft:chicken",
+      "effects": [
+        {
+          "effect": "minecraft:speed",
+          "duration": 12000,
+          "amplifier": 1
+        }
+      ]
     }
   ],
 
   "waves": [
     { "count": 20 }
   ],
+
+  "weight": 2,
 
   "reward_xp": 150
 }
