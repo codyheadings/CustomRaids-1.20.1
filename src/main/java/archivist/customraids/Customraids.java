@@ -1,18 +1,28 @@
 package archivist.customraids;
 
 import archivist.customraids.events.RaidReloadListener;
+import archivist.customraids.util.RaidDefinition;
 import archivist.customraids.util.RaidManager;
 import archivist.customraids.util.RaidState;
+import archivist.customraids.util.raidcontext.PlayerRaidContext;
+import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.food.FoodProperties;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
@@ -20,11 +30,13 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.living.MobSpawnEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
+import net.minecraftforge.event.entity.player.PlayerSleepInBedEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -83,16 +95,45 @@ public class Customraids {
     public class RaidEvents {
 
         @SubscribeEvent
+        public static void onPlayerSleep(PlayerSleepInBedEvent event) {
+            if (!(event.getEntity() instanceof ServerPlayer player)) return;
+
+            ServerLevel level = player.serverLevel();
+            if (!level.dimension().equals(Level.OVERWORLD)) return;
+
+            long time = level.getDayTime() % 24000L;
+            int day = (int) (level.getGameTime() / 24000L);
+
+            boolean preNight = time >= 12000;
+
+            if (!preNight) return;
+
+            if (RaidManager.isRaidNight(level, day)) {
+                event.setResult(Player.BedSleepingProblem.OTHER_PROBLEM);
+
+                String msg = RaidManager.getRaidsForPlayer(player).isEmpty()
+                        ? "You feel uneasy... something is coming."
+                        : "You cannot sleep during a raid!";
+
+                player.displayClientMessage(Component.literal(msg), true);
+            }
+        }
+
+        @SubscribeEvent
         public static void onPlayerLogout(PlayerEvent.PlayerLoggedOutEvent event) {
             if (!(event.getEntity() instanceof ServerPlayer player)) return;
 
-            for (RaidState raid :
-                    new ArrayList<>(RaidManager.getRaidsForPlayer(player))) {
-
-                raid.context.removeParticipant(player);
-                raid.bossBar.removePlayer(player);
+            for (RaidState raid : new ArrayList<>(RaidManager.getRaidsForPlayer(player))) {
+                raid.onPlayerLeft(player);
             }
         }
+
+//        @SubscribeEvent
+//        public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
+//            if (!(event.getEntity() instanceof ServerPlayer player)) return;
+//
+//            RaidManager.tryReattachPlayer(player);
+//        }
 
         @SubscribeEvent
         public static void onMobDeath(LivingDeathEvent event) {
@@ -128,6 +169,9 @@ public class Customraids {
 
                 raid.context.removeParticipant(player);
                 raid.bossBar.removePlayer(player);
+                if (!raid.context.hasLivingParticipants()){
+                    raid.end(false);
+                }
             }
         }
 
@@ -157,14 +201,50 @@ public class Customraids {
             modid = Customraids.MODID,
             bus = Mod.EventBusSubscriber.Bus.FORGE
     )
+    public class RaidCommands {
+
+        @SubscribeEvent
+        public static void registerCommands(RegisterCommandsEvent event) {
+            CommandDispatcher<CommandSourceStack> dispatcher = event.getDispatcher();
+
+            dispatcher.register(
+                    Commands.literal("startraid")
+                            .requires(source -> source.hasPermission(2))
+                            .executes(context -> startRaid(context.getSource()))
+            );
+        }
+
+        private static int startRaid(CommandSourceStack source) {
+
+            if (!(source.getEntity() instanceof ServerPlayer player)) {
+                source.sendFailure(Component.literal("This command can only be run by a player."));
+                return 0;
+            }
+
+            ServerLevel level = player.serverLevel();
+
+            RaidManager.startRaids(level);
+
+            source.sendSuccess(
+                    () -> Component.literal("Raid started!"),
+                    true
+            );
+
+            return 1;
+        }
+
+    }
+
+    @Mod.EventBusSubscriber(
+            modid = Customraids.MODID,
+            bus = Mod.EventBusSubscriber.Bus.FORGE
+    )
     public static class ReloadEvents {
 
         @SubscribeEvent
         public static void onAddReloadListeners(AddReloadListenerEvent event) {
 
             event.addListener(new RaidReloadListener());
-
-            Customraids.getLOGGER().info("Raid reload listener registered");
         }
     }
 

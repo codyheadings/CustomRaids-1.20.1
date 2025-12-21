@@ -21,49 +21,55 @@ import java.util.Map;
 public class RaidTicker {
     private static final Map<ResourceKey<Level>, Boolean> WAS_NIGHT =
             new HashMap<>();
+    private static int tickCounter = 0;
 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
 
-        for (ServerLevel level : event.getServer().getAllLevels()) {
-            if (!level.dimension().equals(Level.OVERWORLD)) continue;
+        if(tickCounter++ % 20 == 0) {
 
-            long time = level.getDayTime() % 24000L;
-            int day = (int) (level.getGameTime() / 24000L);
+            for (ServerLevel level : event.getServer().getAllLevels()) {
+                if (!level.dimension().equals(Level.OVERWORLD)) continue;
 
-            boolean night = time >= 13000 && time <= 23000;
-            boolean wasNight = WAS_NIGHT.getOrDefault(level.dimension(), false);
-            boolean approachingDay = time >= 22000 && time < 23000;
+                long time = level.getDayTime() % 24000L;
+                int day = (int) (level.getGameTime() / 24000L);
 
-            List<RaidState> activeRaids = RaidManager.getActiveRaids();
-            for (RaidState raid : new ArrayList<>(activeRaids)){
-                RaidContext context = raid.context;
-                if (!context.hasLivingParticipants()) {
-                    raid.end(false);
-                }
-            }
+                boolean night = time >= 13000 && time <= 23000;
+                boolean wasNight = WAS_NIGHT.getOrDefault(level.dimension(), false);
+                boolean approachingDay = time >= 22000 && time < 23000;
 
-            if (approachingDay && Config.dayGlow) {
-                for (RaidState raid : activeRaids) {
-                    if (raid.isActive()) {
-                        raid.applyDayGlow();
+                List<RaidState> activeRaids = RaidManager.getActiveRaids();
+                for (RaidState raid : new ArrayList<>(activeRaids)) {
+                    if (raid.isPaused()) continue;
+                    RaidContext context = raid.context;
+                    if (!context.hasLivingParticipants()) {
+                        raid.end(false);
                     }
                 }
-            }
 
-            if (night && !wasNight && !RaidManager.wasRaidAttemptedToday(level, day) && day % Config.raidInterval == 0) {
-                Customraids.getLOGGER().info("Night detected, starting raids");
-                RaidManager.startRaids(level);
-            }
-
-            if (!night && wasNight){
-                for (RaidState raid : new ArrayList<>(activeRaids)){
-                    raid.end(false);
+                if (approachingDay && Config.dayGlow) {
+                    for (RaidState raid : activeRaids) {
+                        if (raid.isPaused()) continue;
+                        if (raid.isActive()) {
+                            raid.applyDayGlow();
+                        }
+                    }
                 }
-            }
 
-            WAS_NIGHT.put(level.dimension(), night);
+                if (night && !wasNight && !RaidManager.wasRaidAttemptedToday(level, day) && day % Config.raidInterval == 0) {
+                    Customraids.getLOGGER().info("Night detected, starting raids");
+                    RaidManager.startRaids(level);
+                }
+
+                if (!night && wasNight) {
+                    for (RaidState raid : new ArrayList<>(activeRaids)) {
+                        raid.end(false);
+                    }
+                }
+
+                WAS_NIGHT.put(level.dimension(), night);
+            }
         }
     }
 }

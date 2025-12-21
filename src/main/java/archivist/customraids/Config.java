@@ -15,6 +15,8 @@ public class Config {
 
     private static final ForgeConfigSpec.BooleanValue DAYGLOW = BUILDER.comment("Raiders will glow as day approaches").define("dayGlow", true);
 
+    //private static final ForgeConfigSpec.BooleanValue FAILONLOGOUT = BUILDER.comment("Players fail an active raid if they log out").define("failOnLogout", true);
+
     private static final ForgeConfigSpec.IntValue RAID_INTERVAL = BUILDER.comment("The number of days between raids").defineInRange("raidInterval", 7, 1, Integer.MAX_VALUE);
 
     private static final ForgeConfigSpec.IntValue MIN_DISTANCE = BUILDER.comment("Minimum distance (blocks) that a raider can spawn").defineInRange("minSpawnDistance", 52, 1, 160);
@@ -25,6 +27,7 @@ public class Config {
 
     public static boolean multiplayer;
     public static boolean dayGlow;
+    //public static boolean failOnLogout;
     public static int raidInterval;
     public static int minSpawnDistance;
     public static int maxSpawnDistance;
@@ -33,6 +36,7 @@ public class Config {
     static void onLoad(final ModConfigEvent event) {
         multiplayer = MULTIPLAYER.get();
         dayGlow = DAYGLOW.get();
+        //failOnLogout = FAILONLOGOUT.get();
         raidInterval = RAID_INTERVAL.get();
         minSpawnDistance = MIN_DISTANCE.get();
         maxSpawnDistance = MAX_DISTANCE.get();

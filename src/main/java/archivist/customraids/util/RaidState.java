@@ -21,6 +21,7 @@ import net.minecraft.world.entity.FlyingMob;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.monster.Slime;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -39,6 +40,8 @@ public class RaidState {
     private final UUID id = UUID.randomUUID();
     public static final String RAID_ID_TAG = "customraids:raid_id";
     private boolean glowApplied = false;
+    private boolean paused = false;
+    private Set<ChunkPos> forcedChunks = new HashSet<>();
 
     public RaidState(RaidContext context) {
         this.context = context;
@@ -202,6 +205,11 @@ public class RaidState {
         cleanupRaiders();
         bossBar.setVisible(false);
         bossBar.removeAllPlayers();
+        for (ChunkPos pos : forcedChunks) {
+            context.level().setChunkForced(pos.x, pos.z, false);
+        }
+        forcedChunks.clear();
+
         RaidManager.onRaidFinished(this);
     }
 
@@ -238,7 +246,6 @@ public class RaidState {
 
         glowApplied = true;
     }
-
 
     private void updateBossBar() {
         int total = definition.waves.get(currentWave).count;
@@ -280,6 +287,88 @@ public class RaidState {
         player.sendSystemMessage(
                 Component.literal("You joined a raid!")
         );
+    }
+
+    public void onPlayerLeft(ServerPlayer player) {
+        context.removeParticipant(player);
+        bossBar.removePlayer(player);
+
+        if (context.getParticipants().isEmpty()) {
+            handleNoParticipants();
+        }
+    }
+
+    private void handleNoParticipants() {
+        //if (Config.failOnLogout) {
+            end(false);
+        //} else {
+            //pause();
+        //}
+    }
+
+    public void pause() {
+        this.paused = true;
+        BlockPos base = context.getBasePos();
+        ChunkPos center = new ChunkPos(base);
+
+        for (int dx = -2; dx <= 2; dx++) {
+            for (int dz = -2; dz <= 2; dz++) {
+                ChunkPos pos = new ChunkPos(center.x + dx, center.z + dz);
+                context.level().setChunkForced(pos.x, pos.z, true);
+                forcedChunks.add(pos);
+            }
+        }
+
+        Customraids.getLOGGER().debug(
+                "Raid has been paused."
+        );
+    }
+
+    public boolean isPaused() {
+        return paused;
+    }
+
+    public boolean canRejoin(ServerPlayer player) {
+        Customraids.getLOGGER().debug(
+                "Checking if raid is paused..."
+        );
+        if (!isPaused()) return false;
+//        if (!context.isValid()) return false;
+        Customraids.getLOGGER().debug(
+                "Checking if player is alive..."
+        );
+        if (player.isDeadOrDying()) return false;
+//        if (!player.level().equals(context.level())) return false;
+
+        Customraids.getLOGGER().debug(
+                "Raid can be rejoined."
+        );
+
+//        BlockPos base = context.getBasePos();
+//        if (player.blockPosition().distSqr(base) > 256 * 256) return false;
+
+        return true;
+    }
+
+    public void resume(ServerPlayer player) {
+        if (!isPaused()) return;
+
+        context.addParticipant(player);
+        bossBar.addPlayer(player);
+
+        this.paused = false;
+
+        activeMobs.removeIf(mob -> mob == null || !mob.isAlive());
+
+        if (activeMobs.isEmpty()) {
+            spawnNextWave();
+        }
+
+        for (ChunkPos pos : forcedChunks) {
+            context.level().setChunkForced(pos.x, pos.z, false);
+        }
+        forcedChunks.clear();
+
     }
 
     public boolean isFinished() {

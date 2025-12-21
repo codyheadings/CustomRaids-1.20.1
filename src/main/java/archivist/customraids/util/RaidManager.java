@@ -5,12 +5,18 @@ import archivist.customraids.Customraids;
 import archivist.customraids.util.raidcontext.PlayerRaidContext;
 import archivist.customraids.util.raidcontext.RaidContext;
 import archivist.customraids.util.raidcontext.ServerRaidContext;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.level.Level;
+import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 import java.util.*;
 
@@ -116,6 +122,26 @@ public class RaidManager {
 
     public static void onRaidFinished(RaidState raid) {
         ACTIVE_RAIDS.remove(raid);
+    }
+
+    public static boolean isRaidNight(ServerLevel level, int day) {
+        return !wasRaidAttemptedToday(level, day) && shouldRaidOccur(level, day);
+    }
+
+    private static boolean shouldRaidOccur(ServerLevel level, int day) {
+        return day % Config.raidInterval == 0;
+    }
+
+    public static void tryReattachPlayer(ServerPlayer player) {
+        for (RaidState raid : ACTIVE_RAIDS) {
+            if (raid.canRejoin(player)) {
+                raid.addParticipant(player);
+                raid.resume(player);
+                Customraids.getLOGGER().debug(
+                        "Raid successfully rejoined!"
+                );
+            }
+        }
     }
 
     public static void removeRaidsForPlayer(ServerPlayer player) {

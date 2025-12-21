@@ -5,14 +5,18 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class PlayerRaidContext implements RaidContext {
 
     private final ServerPlayer player;
+    private final Set<ServerPlayer> participants = new HashSet<>();
 
     public PlayerRaidContext(ServerPlayer player) {
         this.player = player;
+        participants.add(player);
     }
 
     public ServerPlayer getPlayer() {
@@ -32,7 +36,17 @@ public class PlayerRaidContext implements RaidContext {
 
     @Override
     public Collection<ServerPlayer> getParticipants() {
-        return List.of(player);
+        return participants;
+    }
+
+    @Override
+    public void addParticipant(ServerPlayer player) {
+        participants.add(player);
+    }
+
+    @Override
+    public void removeParticipant(ServerPlayer player) {
+        participants.remove(player);
     }
 
     @Override

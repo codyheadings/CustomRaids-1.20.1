@@ -25,13 +25,9 @@ public interface RaidContext {
         return getParticipants().contains(player);
     }
 
-    default void addParticipant(ServerPlayer player) {
-        getParticipants().add(player);
-    }
+    void addParticipant(ServerPlayer player);
 
-    default void removeParticipant(ServerPlayer player) {
-        getParticipants().remove(player);
-    }
+    void removeParticipant(ServerPlayer player);
 
     default boolean hasLivingParticipants() {
         return getParticipants().stream()
