@@ -1,9 +1,9 @@
 {
-  "name": "Firing Squad",
+  "name": "Bone and Arrow",
 
   "mobs": [
     {
-      "id": "minecraft:blaze",
+      "id": "minecraft:stray",
       "weight": 1
     },
     {
@@ -13,8 +13,11 @@
   ],
 
   "waves": [
-    { "count": 6 }
+    { "count": 4 },
+    { "count": 5 }
   ],
 
-  "reward_xp": 220
+  "weight": 3,
+
+  "reward_xp": 200
 }

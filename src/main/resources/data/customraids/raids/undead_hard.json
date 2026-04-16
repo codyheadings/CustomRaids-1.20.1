@@ -1,0 +1,26 @@
+{
+  "name": "Undead Horde",
+
+  "mobs": [
+    {
+      "id": "minecraft:zombie"
+    },
+    {
+      "id": "minecraft:husk"
+    },
+    {
+      "id": "minecraft:drowned"
+    }
+  ],
+
+  "waves": [
+    { "count": 5 },
+    { "count": 6 },
+    { "count": 8 },
+    { "count": 10 }
+  ],
+
+  "weight": 3,
+
+  "reward_xp": 275
+}

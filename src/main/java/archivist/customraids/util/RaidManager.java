@@ -5,24 +5,18 @@ import archivist.customraids.Customraids;
 import archivist.customraids.util.raidcontext.PlayerRaidContext;
 import archivist.customraids.util.raidcontext.RaidContext;
 import archivist.customraids.util.raidcontext.ServerRaidContext;
-import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.Commands;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.Mob;
-import net.minecraft.world.level.Level;
-import net.minecraftforge.event.RegisterCommandsEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 
 import java.util.*;
 
 public class RaidManager {
 
     private static final List<RaidState> ACTIVE_RAIDS = new ArrayList<>();
+
+    private static final Map<UUID, Long> ATTEMPTED_DAYS = new HashMap<>();
 
     public static RaidState getRaidForMob(Mob mob) {
         for (String tag : mob.getTags()) {
@@ -57,7 +51,7 @@ public class RaidManager {
         if (!Config.multiplayer) {
             // Default: One shared raid
             Customraids.getLOGGER().debug(
-                    "Starting raid!"
+                    "Starting server raid!"
             );
             startSingleRaid(
                     new ServerRaidContext(level),
@@ -84,8 +78,7 @@ public class RaidManager {
             List<RaidDefinition> availableRaids,
             RandomSource random
     ) {
-        RaidDefinition def =
-                getRandomRaid(availableRaids, random);
+        RaidDefinition def = getRandomRaid(availableRaids, random);
 
         RaidState raid = new RaidState(context);
         ACTIVE_RAIDS.add(raid);
@@ -112,15 +105,12 @@ public class RaidManager {
     }
 
     public static boolean wasRaidAttemptedToday(ServerLevel level, long day) {
-        for (RaidState raid : ACTIVE_RAIDS) {
-            if (raid.context.wasAttemptedToday(day)) {
-                return true;
-            }
-        }
-        return false;
+        return ATTEMPTED_DAYS.values().stream().anyMatch(d -> d == day)
+                || ACTIVE_RAIDS.stream().anyMatch(r -> r.context.wasAttemptedToday(day));
     }
 
     public static void onRaidFinished(RaidState raid) {
+        ATTEMPTED_DAYS.put(raid.getId(), raid.day);
         ACTIVE_RAIDS.remove(raid);
     }
 

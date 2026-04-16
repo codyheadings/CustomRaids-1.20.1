@@ -3,7 +3,8 @@
 
   "mobs": [
     {
-      "id": "minecraft:zombie"
+      "id": "minecraft:zombie",
+      "weight": 2
     },
     {
       "id": "minecraft:husk"
@@ -18,11 +19,11 @@
 
   "waves": [
     { "count": 5 },
-    { "count": 7 },
-    { "count": 8 }
+    { "count": 6 },
+    { "count": 7 }
   ],
 
   "weight": 5,
 
-  "reward_xp": 250
+  "reward_xp": 200
 }

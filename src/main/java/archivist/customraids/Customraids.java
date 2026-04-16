@@ -103,19 +103,29 @@ public class Customraids {
 
             long time = level.getDayTime() % 24000L;
             int day = (int) (level.getGameTime() / 24000L);
+            Customraids.getLOGGER().debug("Time is {}", time);
 
             boolean preNight = time >= 12000;
 
             if (!preNight) return;
 
             if (RaidManager.isRaidNight(level, day)) {
-                event.setResult(Player.BedSleepingProblem.OTHER_PROBLEM);
+                if (time > 13000){
+                    boolean hasRaid = !RaidManager.getRaidsForPlayer(player).isEmpty();
+                    if (hasRaid){
+                        event.setResult(Player.BedSleepingProblem.OTHER_PROBLEM);
 
-                String msg = RaidManager.getRaidsForPlayer(player).isEmpty()
-                        ? "You feel uneasy... something is coming."
-                        : "You cannot sleep during a raid!";
+                        String msg = "You cannot sleep during a raid!";
 
-                player.displayClientMessage(Component.literal(msg), true);
+                        player.displayClientMessage(Component.literal(msg), true);
+                    }
+                } else {
+                    event.setResult(Player.BedSleepingProblem.OTHER_PROBLEM);
+
+                    String msg = "You feel uneasy... something is coming.";
+
+                    player.displayClientMessage(Component.literal(msg), true);
+                }
             }
         }
 

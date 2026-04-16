@@ -21,6 +21,7 @@ public class ServerRaidContext implements RaidContext {
         participants.addAll(level.players());
     }
 
+    // Get player's respawn point and if not found, get their current block position
     private static BlockPos getPlayerRespawnOrPosition(ServerPlayer player) {
         BlockPos respawn = player.getRespawnPosition();
         if (respawn != null) {

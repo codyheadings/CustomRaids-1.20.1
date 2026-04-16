@@ -32,6 +32,7 @@ public class RaidState {
     public final RaidContext context;
     public RaidDefinition definition;
     public int currentWave = 0;
+    public long day = 0L;
     public final Set<Mob> activeMobs = new HashSet<>();
     public final ServerBossEvent bossBar;
     private static final Random RANDOM = new Random();
@@ -61,6 +62,7 @@ public class RaidState {
         if (context.wasAttemptedToday(day)) return;
 
         this.result = RaidResult.ONGOING;
+        this.day = day;
         this.definition = def;
         this.currentWave = 0;
         this.updateBossBarText();

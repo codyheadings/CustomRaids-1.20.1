@@ -32,12 +32,12 @@ public class RaidTicker {
             for (ServerLevel level : event.getServer().getAllLevels()) {
                 if (!level.dimension().equals(Level.OVERWORLD)) continue;
 
-                long time = level.getDayTime() % 24000L;
-                int day = (int) (level.getGameTime() / 24000L);
+                long currentTime = level.getDayTime() % 24000L;
+                long dayCount = level.getDayTime() / 24000L;
 
-                boolean night = time >= 13000 && time <= 23000;
+                boolean night = currentTime >= 13000 && currentTime <= 23000;
                 boolean wasNight = WAS_NIGHT.getOrDefault(level.dimension(), false);
-                boolean approachingDay = time >= 22000 && time < 23000;
+                boolean approachingDay = currentTime >= 22000 && currentTime < 23000;
 
                 List<RaidState> activeRaids = RaidManager.getActiveRaids();
                 for (RaidState raid : new ArrayList<>(activeRaids)) {
@@ -57,7 +57,7 @@ public class RaidTicker {
                     }
                 }
 
-                if (night && !wasNight && !RaidManager.wasRaidAttemptedToday(level, day) && day % Config.raidInterval == 0) {
+                if (night && !wasNight && !RaidManager.wasRaidAttemptedToday(level, dayCount) && dayCount % Config.raidInterval == 0) {
                     Customraids.getLOGGER().info("Night detected, starting raids");
                     RaidManager.startRaids(level);
                 }
